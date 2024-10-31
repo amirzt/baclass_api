@@ -6,13 +6,12 @@ from Users.models import CustomUser, Wallet, Student, Grade
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['phone', 'is_student', 'version', 'market']
+        fields = ['phone', 'is_student', 'version']
 
     def save(self, **kwargs):
         user = CustomUser(phone=self.validated_data['phone'],
                           is_student=self.validated_data['is_student'],
-                          version=self.validated_data['version'],
-                          market=self.validated_data['market'])
+                          version=self.validated_data['version'])
         user.save()
 
         # wallet
@@ -25,3 +24,36 @@ class RegisterSerializer(serializers.ModelSerializer):
             student.save()
 
         return user
+
+
+class WalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = '__all__'
+
+
+class GradeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Grade
+        fields = '__all__'
+
+
+class CustomUserSerializer(serializers.ModelSerializer):
+    wallet = serializers.SerializerMethodField('get_wallet')
+
+    @staticmethod
+    def get_wallet(self):
+        return WalletSerializer(Wallet.objects.get(user=self)).data
+
+    class Meta:
+        model = CustomUser
+        fields = ['phone', 'name', 'user_name', 'email', 'wallet', 'is_student', 'market', 'version']
+
+
+class StudentSerializer(serializers.ModelSerializer):
+    user = CustomUserSerializer()
+    grade = GradeSerializer()
+
+    class Meta:
+        model = Student
+        fields = '__all__'

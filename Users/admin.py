@@ -1,9 +1,11 @@
 from django.contrib import admin
 
-from Users.models import CustomUser, Student, Grade
+from Users.models import CustomUser, Student, Grade, Wallet, OTP
 
 # Register your models here.
 admin.site.register(Grade)
+admin.site.register(Wallet)
+admin.site.register(OTP)
 
 
 @admin.register(CustomUser)

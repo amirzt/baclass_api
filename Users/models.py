@@ -52,7 +52,7 @@ class Grade(models.Model):
 
 
 def in_seven_days():
-    return datetime.now() + timedelta(days=-1)
+    return datetime.datetime.now() + timedelta(days=-1)
 
 
 class Student(models.Model):
@@ -78,6 +78,7 @@ def get_random_code():
 
 
 class OTP(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     code = models.CharField(max_length=4, default=get_random_code)
     created_at = models.DateTimeField(auto_now_add=True)
 

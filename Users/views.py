@@ -1,11 +1,11 @@
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from Users.models import CustomUser, Student, OTP
-from Users.serializers import RegisterSerializer
+from Users.models import CustomUser, Student, OTP, Grade
+from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer
 
 
 def send_otp(user):
@@ -49,3 +49,36 @@ def login(request):
 
     else:
         return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': 'invalid action'})
+
+
+@api_view(['PUT', 'GET'])
+@permission_classes([IsAuthenticated])
+def profile(request):
+    user = CustomUser.objects.get(id=request.user.id)
+    if request.method == 'GET':
+        if user.is_student:
+            student = Student.objects.get(user=user)
+            serializer = StudentSerializer(student)
+            return Response(status=status.HTTP_200_OK, data=serializer.data)
+        else:
+            return Response(status=status.HTTP_200_OK, data=CustomUserSerializer(user).data)
+    elif request.method == 'PUT':
+        if user.is_student:
+            student = Student.objects.get(user=user)
+            if 'grade' in request.data:
+                student.grade = Grade.objects.get(id=request.data['grade'])
+            if 'gender' in request.data:
+                student.gender = request.data['gender']
+            student.save()
+        if 'name' in request.data:
+            user.name = request.data['name']
+        if 'user_name' in request.data:
+            user.user_name = request.data['user_name']
+        if 'email' in request.data:
+            user.email = request.data['email']
+        if 'market' in request.data:
+            user.market = request.data['market']
+        if 'version' in request.data:
+            user.version = request.data['version']
+        user.save()
+        return Response(status=status.HTTP_200_OK)
