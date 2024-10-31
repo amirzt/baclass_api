@@ -1,11 +1,12 @@
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from Users.models import CustomUser, Student, OTP, Grade
 from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer
+from rest_framework.decorators import action
 
 
 def send_otp(user):
@@ -13,72 +14,65 @@ def send_otp(user):
     otp.save()
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def login(request):
-    if 'action' in request.data:
-        action = request.data['action']
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': 'action is required'})
+class UserViewSet(viewsets.ViewSet):
 
-    if action == 'login':
-        try:
-            user = CustomUser.objects.get(phone=request.data['phone'])
-        except CustomUser.DoesNotExist:
-            serializer = RegisterSerializer(data=request.data)
-            if serializer.is_valid():
-                user = serializer.save()
-            else:
-                return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
-        send_otp(user)
-        return Response(status=status.HTTP_200_OK, data={'message': 'otp sent'})
-    elif action == 'check_otp':
-        user = CustomUser.objects.get(phone=request.data['phone'])
-        if 'otp' not in request.data:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': 'otp is required'})
-        otp = OTP.objects.filter(user=user)
-        if otp.count() == 0:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': 'otp not found'})
-        if request.data['otp'] != otp.last().code:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': 'invalid otp'})
-        else:
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def login(self, request):
+        method = request.data.get('action')
+        if not method:
+            return Response({'error': 'action is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if method == 'login':
+            user, created = CustomUser.objects.get_or_create(phone=request.data['phone'])
+            if created:
+                serializer = RegisterSerializer(data=request.data)
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer.save()
+            send_otp(user)
+            return Response({'message': 'otp sent'}, status=status.HTTP_200_OK)
+
+        elif method == 'check_otp':
+            user = get_object_or_404(CustomUser, phone=request.data['phone'])
+            otp_code = request.data.get('otp')
+            if not otp_code:
+                return Response({'error': 'otp is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            otp = OTP.objects.filter(user=user).last()
+            if not otp or otp.code != otp_code:
+                return Response({'error': 'invalid or expired otp'}, status=status.HTTP_400_BAD_REQUEST)
+
             user.is_active = True
             user.save()
-            token, created = Token.objects.get_or_create(user=user)
-            return Response(status=status.HTTP_200_OK, data={'token': token.key})
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({'token': token.key}, status=status.HTTP_200_OK)
 
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST, data={'error': 'invalid action'})
+        return Response({'error': 'invalid action'}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['get', 'put'], permission_classes=[IsAuthenticated])
+    def profile(self, request):
+        user = get_object_or_404(CustomUser, id=request.user.id)
 
-@api_view(['PUT', 'GET'])
-@permission_classes([IsAuthenticated])
-def profile(request):
-    user = CustomUser.objects.get(id=request.user.id)
-    if request.method == 'GET':
-        if user.is_student:
-            student = Student.objects.get(user=user)
-            serializer = StudentSerializer(student)
-            return Response(status=status.HTTP_200_OK, data=serializer.data)
-        else:
-            return Response(status=status.HTTP_200_OK, data=CustomUserSerializer(user).data)
-    elif request.method == 'PUT':
-        if user.is_student:
-            student = Student.objects.get(user=user)
-            if 'grade' in request.data:
-                student.grade = Grade.objects.get(id=request.data['grade'])
-            if 'gender' in request.data:
-                student.gender = request.data['gender']
-            student.save()
-        if 'name' in request.data:
-            user.name = request.data['name']
-        if 'user_name' in request.data:
-            user.user_name = request.data['user_name']
-        if 'email' in request.data:
-            user.email = request.data['email']
-        if 'market' in request.data:
-            user.market = request.data['market']
-        if 'version' in request.data:
-            user.version = request.data['version']
-        user.save()
-        return Response(status=status.HTTP_200_OK)
+        if request.method == 'GET':
+            serializer = StudentSerializer(user.student) if user.is_student else CustomUserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        elif request.method == 'PUT':
+            data = request.data
+            if user.is_student:
+                student = get_object_or_404(Student, user=user)
+                if 'grade' in data:
+                    student.grade = get_object_or_404(Grade, id=data['grade'])
+                if 'gender' in data:
+                    student.gender = data['gender']
+                student.save()
+
+            # Update the user fields
+            user.name = data.get('name', user.name)
+            user.user_name = data.get('user_name', user.user_name)
+            user.email = data.get('email', user.email)
+            user.market = data.get('market', user.market)
+            user.version = data.get('version', user.version)
+            user.save()
+
+            return Response(status=status.HTTP_200_OK)
