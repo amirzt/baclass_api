@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from Users.models import CustomUser, Wallet, Student, Grade
+from Users.models import CustomUser, Wallet, Student, Grade, Banner, HomeMessage, Version
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -56,4 +56,22 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
+        fields = '__all__'
+
+
+class BannerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Banner
+        fields = '__all__'
+
+
+class HomeMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HomeMessage
+        fields = '__all__'
+
+
+class VersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Version
         fields = '__all__'

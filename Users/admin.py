@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from Users.models import CustomUser, Student, Grade, Wallet, OTP
+from Users.models import CustomUser, Student, Grade, Wallet, OTP, Banner, HomeMessage, Version
 
 # Register your models here.
 admin.site.register(Grade)
@@ -22,3 +22,8 @@ class StudentAdmin(admin.ModelAdmin):
     list_filter = ('grade', 'gender', 'expire_date')
     search_fields = ('user__phone__startswith', 'user__name__startswith')
     fields = ('user', 'grade', 'gender', 'expire_date')
+
+
+admin.site.register(Banner)
+admin.site.register(HomeMessage)
+admin.site.register(Version)

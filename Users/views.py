@@ -4,8 +4,9 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from Users.models import CustomUser, Student, OTP, Grade
-from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer
+from Users.models import CustomUser, Student, OTP, Grade, HomeMessage, Banner, Version
+from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer, HomeMessageSerializer, \
+    BannerSerializer, VersionSerializer
 from rest_framework.decorators import action
 
 
@@ -76,3 +77,23 @@ class UserViewSet(viewsets.ViewSet):
             user.save()
 
             return Response(status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def home(self, request):
+        home_messages = HomeMessage.objects.filter(is_active=True).order_by('-created_at')
+        banners = Banner.objects.filter(is_active=True).order_by('-created_at')
+        version = Version.objects.all().last()
+
+        return Response({
+            'home_messages': HomeMessageSerializer(home_messages, many=True).data,
+            'banners': BannerSerializer(banners, many=True).data,
+            'version': VersionSerializer(version).data
+        })
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def splash(self, request):
+        user = get_object_or_404(CustomUser, id=request.user.id)
+        user.version = request.data['version']
+        user.market = request.data['market']
+        user.save()
+        return Response(status=status.HTTP_200_OK)
