@@ -1,11 +1,19 @@
+from datetime import timedelta
+
+from django.db.models import Sum, Q, OuterRef, Subquery
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from Game.models import BattlePass, BattlePassParticipant, DailyChallenge, WeeklyChallenge, Avatar
-from Game.serializers import BattlePassSerializer, DailyChallengeSerializer, WeeklyChallengeSerializer, AvatarSerializer
+from Game.models import BattlePass, BattlePassParticipant, DailyChallenge, WeeklyChallenge, Avatar, XPTracker
+from Game.serializers import BattlePassSerializer, DailyChallengeSerializer, WeeklyChallengeSerializer, \
+    AvatarSerializer, UserWithXPSerializer
 from Users.models import CustomUser
+from Users.serializers import CustomUserSerializer
 
 
 class BattlePassViewSet(viewsets.ModelViewSet):
@@ -36,6 +44,39 @@ class BattlePassViewSet(viewsets.ModelViewSet):
             return Response({"detail": "No active BattlePass found."}, status=404)
         serializer = self.get_serializer(battle_pass, context={'user': self.get_user()})
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def ranking(self, request):
+        battle_pass = self.get_queryset().first()
+        filter_date = timezone.now() - timedelta(days=30)
+
+        if 'period' in request.query_params:
+            period = request.query_params['period']
+            if period == 'week':
+                filter_date = timezone.now() - timedelta(days=7)
+            elif period == 'month':
+                filter_date = timezone.now() - timedelta(days=30)
+            else:
+                filter_date = battle_pass.start_date
+
+        # Filter XPTracker records for the specific BattlePass and time range
+        # Get participants for the specified BattlePass
+        xp_subquery = XPTracker.objects.filter(
+            user=OuterRef('user'),
+            battle_pass=battle_pass,
+            created_at__gte=filter_date
+        ).values('user').annotate(total_xp=Sum('xp')).values('total_xp')
+
+        # Get participants for the specified BattlePass and annotate with total XP from the subquery
+        users_with_xp = (
+            BattlePassParticipant.objects
+            .filter(battle_pass=battle_pass)
+            .annotate(total_xp=Subquery(xp_subquery))
+            .order_by('-total_xp')  # Sort by total XP descending
+            .values('user', 'total_xp')  # Select only user ID and total XP
+        )
+        serializer = UserWithXPSerializer(users_with_xp, many=True)
+        return Response(status=200, data=serializer.data)
 
 
 class ChallengeBaseViewSet(viewsets.ModelViewSet):

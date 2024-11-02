@@ -4,6 +4,9 @@ from rest_framework import serializers
 
 from Game.models import Avatar, Tier, DailyChallengeParticipant, WeeklyChallenge, Reward, BattlePass, \
     BattlePassParticipant, DailyChallenge, WeeklyChallengeParticipant
+from Users.models import CustomUser
+from Users.serializers import CustomUserSerializer
+from utils.date_functions import get_start_of_week
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -44,7 +47,9 @@ class WeeklyChallengeSerializer(serializers.ModelSerializer):
 
     def get_is_completed(self, obj):
         user = self.context['user']
-        return WeeklyChallengeParticipant.objects.filter(user=user, weekly_challenge=obj).exists()
+        return WeeklyChallengeParticipant.objects.filter(user=user,
+                                                         weekly_challenge=obj,
+                                                         date=get_start_of_week(datetime.date.today())).exists()
 
     class Meta:
         model = WeeklyChallenge
@@ -78,3 +83,12 @@ class BattlePassSerializer(serializers.ModelSerializer):
     class Meta:
         model = BattlePass
         fields = '__all__'
+
+
+class UserWithXPSerializer(serializers.Serializer):
+    total_xp = serializers.IntegerField()
+    user = serializers.SerializerMethodField('get_user')
+
+    @staticmethod
+    def get_user(self):
+        return CustomUserSerializer(CustomUser.objects.get(id=self['user'])).data

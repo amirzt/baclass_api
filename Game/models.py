@@ -121,3 +121,12 @@ class WeeklyChallengeParticipant(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class XPTracker(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    battle_pass = models.ForeignKey(BattlePass, on_delete=models.CASCADE)
+    xp = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
