@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     'Users',
     'Task',
     'Game',
+    'AI'
 ]
 
 MIDDLEWARE = [
