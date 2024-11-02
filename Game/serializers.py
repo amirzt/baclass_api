@@ -1,7 +1,9 @@
+import datetime
+
 from rest_framework import serializers
 
 from Game.models import Avatar, Tier, DailyChallengeParticipant, WeeklyChallenge, Reward, BattlePass, \
-    BattlePassParticipant
+    BattlePassParticipant, DailyChallenge, WeeklyChallengeParticipant
 
 
 class AvatarSerializer(serializers.ModelSerializer):
@@ -29,10 +31,11 @@ class DailyChallengeSerializer(serializers.ModelSerializer):
 
     def get_is_completed(self, obj):
         user = self.context['user']
-        return DailyChallengeParticipant.objects.filter(user=user, daily_challenge=obj).exists()
+        return DailyChallengeParticipant.objects.filter(user=user, daily_challenge=obj,
+                                                        date=datetime.date.today()).exists()
 
     class Meta:
-        model = DailyChallengeParticipant
+        model = DailyChallenge
         fields = '__all__'
 
 
@@ -41,7 +44,7 @@ class WeeklyChallengeSerializer(serializers.ModelSerializer):
 
     def get_is_completed(self, obj):
         user = self.context['user']
-        return WeeklyChallenge.objects.filter(user=user, weekly_challenge=obj).exists()
+        return WeeklyChallengeParticipant.objects.filter(user=user, weekly_challenge=obj).exists()
 
     class Meta:
         model = WeeklyChallenge
@@ -60,13 +63,17 @@ class BattlePassSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_tiers(self):
+        # return []
         all_tiers = Tier.objects.filter(battle_pass=self).order_by('level')
         serializer = TierSerializer(all_tiers, many=True)
         return serializer.data
 
     def get_user_level(self, obj):
-        user = self.context['user']
-        return BattlePassParticipantSerializer(BattlePassParticipant.objects.get(user=user, battle_pass=obj)).data
+        user = self.context.get('user')
+        if user:
+            participant = BattlePassParticipant.objects.get(user=user, battle_pass=obj)
+            return BattlePassParticipantSerializer(participant).data
+        return None
 
     class Meta:
         model = BattlePass
