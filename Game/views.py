@@ -59,21 +59,18 @@ class BattlePassViewSet(viewsets.ModelViewSet):
             else:
                 filter_date = battle_pass.start_date
 
-        # Filter XPTracker records for the specific BattlePass and time range
-        # Get participants for the specified BattlePass
         xp_subquery = XPTracker.objects.filter(
             user=OuterRef('user'),
             battle_pass=battle_pass,
             created_at__gte=filter_date
         ).values('user').annotate(total_xp=Sum('xp')).values('total_xp')
 
-        # Get participants for the specified BattlePass and annotate with total XP from the subquery
         users_with_xp = (
             BattlePassParticipant.objects
             .filter(battle_pass=battle_pass)
             .annotate(total_xp=Subquery(xp_subquery))
-            .order_by('-total_xp')  # Sort by total XP descending
-            .values('user', 'total_xp')  # Select only user ID and total XP
+            .order_by('-total_xp')
+            .values('user', 'total_xp')
         )
         serializer = UserWithXPSerializer(users_with_xp, many=True)
         return Response(status=200, data=serializer.data)
