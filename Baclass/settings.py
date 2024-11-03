@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from django.template.context_processors import media
+from firebase_admin import initialize_app
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,8 +25,17 @@ INSTALLED_APPS = [
     'Users',
     'Task',
     'Game',
-    'AI'
+    'AI',
+    'fcm_django'
 ]
+
+FIREBASE_APP = initialize_app()
+
+FCM_DJANGO_SETTINGS = {
+    "DEFAULT_FIREBASE_APP": None,
+    "ONE_DEVICE_PER_USER": True,
+    "DELETE_INACTIVE_DEVICES": True,
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -97,12 +107,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
-   'DEFAULT_AUTHENTICATION_CLASSES': (
-       'rest_framework.authentication.TokenAuthentication',
-   ),
-   'DEFAULT_PERMISSION_CLASSES': (
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-   ),
+    ),
 }
 
 AUTH_USER_MODEL = 'Users.CustomUser'

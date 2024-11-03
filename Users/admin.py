@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from Users.models import CustomUser, Student, Grade, Wallet, OTP, Banner, HomeMessage, Version, SMSToken
+from Users.models import CustomUser, Student, Grade, Wallet, OTP, Banner, HomeMessage, Version, SMSToken, InAppMessage
 
 # Register your models here.
 admin.site.register(Grade)
@@ -28,3 +28,4 @@ admin.site.register(Banner)
 admin.site.register(HomeMessage)
 admin.site.register(Version)
 admin.site.register(SMSToken)
+admin.site.register(InAppMessage)

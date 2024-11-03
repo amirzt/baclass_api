@@ -1,16 +1,20 @@
 import json
 
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from Users.models import CustomUser, Student, OTP, Grade, HomeMessage, Banner, Version, SMSToken
+from Users.models import CustomUser, Student, OTP, Grade, HomeMessage, Banner, Version, SMSToken, InAppMessage
 from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer, HomeMessageSerializer, \
-    BannerSerializer, VersionSerializer
+    BannerSerializer, VersionSerializer, InAppMessageSerializer
 from rest_framework.decorators import action
 import requests
+
+from utils.notification import senf_fcm
+from utils.ownership import IsOwner
 
 
 def send_otp(user):
@@ -118,3 +122,31 @@ class UserViewSet(viewsets.ViewSet):
         user.market = request.data['market']
         user.save()
         return Response(status=status.HTTP_200_OK)
+
+
+class InAppMessageViewSet(viewsets.ModelViewSet):
+    serializer_class = InAppMessageSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = InAppMessage.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['is_read']
+
+    def get_user(self):
+        return get_object_or_404(CustomUser, id=self.request.user.id)
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.get_user())
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_read = True
+        instance.save()
+        return Response(status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def get_serializer(self, queryset, many):
+        return self.serializer_class(queryset, many=many)

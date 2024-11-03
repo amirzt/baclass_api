@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from Users.models import CustomUser, Wallet, Student, Grade, Banner, HomeMessage, Version
+from Users.models import CustomUser, Wallet, Student, Grade, Banner, HomeMessage, Version, InAppMessage
+from fcm_django.models import FCMDevice
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -17,6 +18,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         # wallet
         wallet = Wallet(user=user)
         wallet.save()
+
+        # fcm device registration
+        fcm_token = self.validated_data['fcm_token']
+        device_type = self.validated_data['device_type']
+        device, created = FCMDevice.objects.get_or_create(
+            registration_id=fcm_token,
+            user=user,
+            defaults={'type': device_type}
+        )
+
+        if not created:
+            device.type = device_type
+            device.save()
 
         if user.is_student:
             student = Student(user=user,
@@ -75,3 +89,12 @@ class VersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Version
         fields = '__all__'
+
+
+class InAppMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InAppMessage
+        fields = '__all__'
+
+    def create(self, validated_data):
+        return InAppMessage.objects.create(**validated_data)
