@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from Task.models import Task
 from Task.serializers import AddTaskSerializer, TaskSerializer
 from Users.models import Student
+from utils.calculate_scores import calculate_score
 from utils.ownership import IsOwner
 
 
@@ -35,7 +36,8 @@ class TaskViewSet(viewsets.ModelViewSet):
         student = self.get_student()
         serializer = self.get_serializer(data=request.data, context={'student': student})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        task = serializer.save()
+        calculate_score(user=student.user, category='add_task', due_date=task.due_date)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
@@ -44,7 +46,9 @@ class TaskViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        task = serializer.save()
+        if task.is_done:
+            calculate_score(user=task.student.user, category='complete_task', due_date=task.due_date)
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):

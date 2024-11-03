@@ -13,6 +13,7 @@ from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserS
 from rest_framework.decorators import action
 import requests
 
+from utils.calculate_scores import calculate_score
 from utils.notification import senf_fcm
 from utils.ownership import IsOwner
 
@@ -121,6 +122,7 @@ class UserViewSet(viewsets.ViewSet):
         user.version = request.data['version']
         user.market = request.data['market']
         user.save()
+        calculate_score(user, 'open_app')
         return Response(status=status.HTTP_200_OK)
 
 
