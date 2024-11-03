@@ -124,3 +124,8 @@ class Version(models.Model):
     force_min_version = models.IntegerField(default=1)
 
 
+class SMSToken(models.Model):
+    token = models.CharField(max_length=100, null=False, blank=False)
+    pattern = models.CharField(max_length=100, null=False, blank=False, default='')
+    number = models.CharField(max_length=100, null=False, blank=False, default='')
+    created_at = models.DateField(auto_now_add=True)

@@ -1,18 +1,39 @@
+import json
+
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from Users.models import CustomUser, Student, OTP, Grade, HomeMessage, Banner, Version
+from Users.models import CustomUser, Student, OTP, Grade, HomeMessage, Banner, Version, SMSToken
 from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer, HomeMessageSerializer, \
     BannerSerializer, VersionSerializer
 from rest_framework.decorators import action
+import requests
 
 
 def send_otp(user):
+    api_url = "https://api2.ippanel.com/api/v1/sms/pattern/normal/send"
+
     otp = OTP(user=user)
     otp.save()
+
+    headers = {
+        'Content-Type': 'application/json',
+        'apikey': SMSToken.objects.filter().last().token
+    }
+
+    body = {
+        "recipient": user.phone,
+        "sender": SMSToken.objects.filter().last().number,
+        "code": SMSToken.objects.filter().last().pattern,
+        "variable": {
+            "code": otp.code
+        }
+    }
+    response = requests.post(api_url, headers=headers, data=json.dumps(body))
+    print(response)
 
 
 class UserViewSet(viewsets.ViewSet):
