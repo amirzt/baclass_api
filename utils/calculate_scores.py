@@ -1,4 +1,5 @@
 import datetime
+import threading
 
 from django.db.models import Sum
 
@@ -55,7 +56,7 @@ def weekly_add(user):
         participant = BattlePassParticipant.objects.get(user=user, battle_pass=battle_pass)
         participant.xp += weekly_challenge.xp
         participant.save()
-        print(participant.xp)
+        # print(participant.xp)
         calculate_level(participant)
 
 
@@ -91,7 +92,7 @@ def weekly_more(user):
         participant = BattlePassParticipant.objects.get(user=user, battle_pass=battle_pass)
         participant.xp += weekly_challenge.xp
         participant.save()
-        print(participant.xp)
+        # print(participant.xp)
         calculate_level(participant)
 
 
@@ -118,11 +119,15 @@ def weekly_min_time(user):
         participant = BattlePassParticipant.objects.get(user=user, battle_pass=battle_pass)
         participant.xp += weekly_challenge.xp
         participant.save()
-        print(participant.xp)
+        # print(participant.xp)
         calculate_level(participant)
 
 
-def calculate_score(user, category, **kwargs):
+def decider(data):
+    user = data['user']
+    category = data['category']
+    kwargs = data['kwargs']
+
     battle_pass = BattlePass.objects.filter(is_active=True).first()
     student = Student.objects.get(user=user)
 
@@ -172,3 +177,15 @@ def calculate_score(user, category, **kwargs):
             return
         add_daily_xp(user, daily, datetime.date.today())
         return
+
+
+def calculate_score(user, category, **kwargs):
+    data = {
+        'user': user,
+        'category': category,
+        'kwargs': kwargs
+    }
+    thread = threading.Thread(target=decider,
+                              args=[data],
+                              daemon=True)
+    thread.start()
