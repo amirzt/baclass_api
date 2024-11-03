@@ -26,7 +26,8 @@ INSTALLED_APPS = [
     'Task',
     'Game',
     'AI',
-    'fcm_django'
+    'fcm_django',
+    'Shop'
 ]
 
 FIREBASE_APP = initialize_app()
