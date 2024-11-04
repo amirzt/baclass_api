@@ -7,6 +7,8 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from AI.models import Prompt
+from AI.serializers import PromptSerializer
 from Users.models import CustomUser, Student, OTP, Grade, HomeMessage, Banner, Version, SMSToken, InAppMessage
 from Users.serializers import RegisterSerializer, StudentSerializer, CustomUserSerializer, HomeMessageSerializer, \
     BannerSerializer, VersionSerializer, InAppMessageSerializer
@@ -14,8 +16,6 @@ from rest_framework.decorators import action
 import requests
 
 from utils.calculate_scores import calculate_score
-from utils.notification import senf_fcm
-from utils.ownership import IsOwner
 
 
 def send_otp(user):
@@ -109,11 +109,13 @@ class UserViewSet(viewsets.ViewSet):
         home_messages = HomeMessage.objects.filter(is_active=True).order_by('-created_at')
         banners = Banner.objects.filter(is_active=True).order_by('-created_at')
         version = Version.objects.all().last()
+        prompts = Prompt.objects.filter(is_active=True)
 
         return Response({
             'home_messages': HomeMessageSerializer(home_messages, many=True).data,
             'banners': BannerSerializer(banners, many=True).data,
-            'version': VersionSerializer(version).data
+            'version': VersionSerializer(version).data,
+            'prompts': PromptSerializer(prompts, many=True).data
         })
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])

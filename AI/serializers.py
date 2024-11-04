@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from AI.models import ChatMessage, Chat
+from AI.models import ChatMessage, Chat, Prompt
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -34,3 +34,9 @@ class ChatSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Chat.objects.create(user=self.context['user'], **validated_data)
+
+
+class PromptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Prompt
+        fields = '__all__'
