@@ -3,13 +3,21 @@ import datetime
 from rest_framework import serializers
 
 from Game.models import Avatar, Tier, DailyChallengeParticipant, WeeklyChallenge, Reward, BattlePass, \
-    BattlePassParticipant, DailyChallenge, WeeklyChallengeParticipant
+    BattlePassParticipant, DailyChallenge, WeeklyChallengeParticipant, AvatarOwnerShip
 from Users.models import CustomUser
 from Users.serializers import CustomUserSerializer
 from utils.date_functions import get_start_of_week
 
 
 class AvatarSerializer(serializers.ModelSerializer):
+    is_owned = serializers.SerializerMethodField('get_owned')
+
+    def get_owned(self, obj):
+        if 'user' not in self.context:
+            return False
+        return AvatarOwnerShip.objects.filter(avatar=obj,
+                                              user=self.context.get('user')).exists()
+
     class Meta:
         model = Avatar
         fields = '__all__'

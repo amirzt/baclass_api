@@ -8,10 +8,10 @@ def ask_question(chat):
     api_key = ApiKey.objects.get(type=ApiKey.Type.gpt).key
     client = OpenAI(api_key=api_key)
 
-    messages = ChatMessage.objects.filter(chat=chat).order_by('-created_at')
-    serializer = ApiMessageSerializer(messages, many=True)
+    messages = ChatMessage.objects.filter().order_by('-created_at').last()
+    serializer = ApiMessageSerializer(messages)
 
-    print(serializer.data)
+    return serializer.data
     # completion = client.chat.completions.create(
     #     model="gpt-4o-mini",
     #     messages=serializer.data

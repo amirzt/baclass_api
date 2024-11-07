@@ -5,9 +5,11 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
+from Game.models import AvatarOwnerShip, Avatar
 from Shop.models import Package, ZarinpalCode, Transaction
 from Shop.serializers import PackageSerializer, AddTransactionSerializer
 from Users.models import CustomUser, Wallet
@@ -22,6 +24,12 @@ CallbackURL = 'https://api.baclass.app/api/shop/package/verify/'
 class PackageViewSet(viewsets.ModelViewSet):
     queryset = Package.objects.all()
     serializer_class = PackageSerializer
+
+    def get_user(self):
+        return get_object_or_404(CustomUser, id=self.request.user.id)
+
+    def get_wallet(self):
+        return get_object_or_404(Wallet, user=self.get_user())
 
     def get_queryset(self):
         return Package.objects.filter(is_available=True)
@@ -150,3 +158,24 @@ class PackageViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_200_OK)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def avatar(self, request, *args, **kwargs):
+        avatar_id = request.data.get('avatar')
+        if not avatar_id:
+            return Response(data={"message": "please select avatar"}, status=status.HTTP_400_BAD_REQUEST)
+        avatar = Avatar.objects.get(id=avatar_id)
+
+        user = self.get_user()
+        wallet = self.get_wallet()
+
+        if wallet.coin < avatar.price:
+            return Response(data={"message": "Not enough coin"}, status=status.HTTP_402_PAYMENT_REQUIRED)
+
+        ownership = AvatarOwnerShip(user=user,
+                                    avatar=avatar)
+        ownership.save()
+
+        wallet.coin = wallet.coin - avatar.price
+        wallet.save()
+        return Response(status=status.HTTP_200_OK)

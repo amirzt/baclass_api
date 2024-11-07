@@ -36,6 +36,15 @@ class ChatSerializer(serializers.ModelSerializer):
         return Chat.objects.create(user=self.context['user'], **validated_data)
 
 
+class CreateChatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        fields = []
+
+    def create(self, validated_data):
+        return Chat.objects.create(user=self.context['user'], **validated_data)
+
+
 class PromptSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prompt

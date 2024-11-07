@@ -11,7 +11,10 @@ from Task.models import Task
 from Task.serializers import AddTaskSerializer, TaskSerializer
 from Users.models import Student
 from utils.calculate_scores import calculate_score
+from utils.date_functions import get_start_of_week
 from utils.ownership import IsOwner
+
+import datetime
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -28,7 +31,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         # Use different serializers for create and other actions
-        if self.action == 'create':
+        if self.action == 'create' or self.action == 'update':
             return AddTaskSerializer
         return TaskSerializer
 
@@ -44,9 +47,10 @@ class TaskViewSet(viewsets.ModelViewSet):
         # Use partial updates by default for flexibility
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer = self.get_serializer(data=request.data, partial=partial,
+                                         context={'student': self.get_student()})
         serializer.is_valid(raise_exception=True)
-        task = serializer.save()
+        task = serializer.update(instance, serializer.data)
         if task.is_done:
             calculate_score(user=task.student.user, category='complete_task', due_date=task.due_date)
         return Response(serializer.data)
@@ -62,6 +66,13 @@ class TaskViewSet(viewsets.ModelViewSet):
     def get_student(self):
         return get_object_or_404(Student, user=self.request.user)
 
+    def list(self, request, *args, **kwargs):
+        tasks = self.get_queryset()
+        if 'due_date' not in request.query_params:
+            return Response({"message": "due date is required"}, status=status.HTTP_400_BAD_REQUEST)
+        tasks = tasks.filter(due_date=request.query_params['due_date'])
+        return Response(self.get_serializer(tasks, many=True).data)
+
 
 class ChartViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated, IsOwner,)
@@ -75,23 +86,33 @@ class ChartViewSet(viewsets.ModelViewSet):
     def chart(self, request):
         student = self.get_student()
         chart_type = request.query_params.get('type')
+        period = request.query_params.get('period')
+
         if not chart_type:
             return Response({'error': 'type is required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not period:
+            return Response({'error': 'period is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if period == 'week':
+            start_date = get_start_of_week(datetime.datetime.today())
+            end_date = start_date + datetime.timedelta(days=7)
+        elif period == 'month':
+            end_date = datetime.datetime.today()
+            start_date = end_date - datetime.timedelta(days=30)
+        elif period == 'year':
+            end_date = datetime.datetime.today()
+            start_date = end_date - datetime.timedelta(days=365)
+        else:
+            return Response({'error': 'period is not valid'}, status=status.HTTP_400_BAD_REQUEST)
 
         if chart_type == 'finished':
-            return Response({'finished': self.get_queryset().filter(is_done=True).count(),
-                             'not_finished': self.get_queryset().filter(is_done=False).count(),
-                             'total': self.get_queryset().count(),
+            return Response({'finished': self.get_queryset().filter(is_done=True,
+                                                                    due_date__range=(start_date, end_date)).count(),
+                             'not_finished': self.get_queryset().filter(is_done=False,
+                                                                        due_date__range=(start_date, end_date)).count(),
+                             'total': self.get_queryset().filter(due_date__range=(start_date, end_date)).count(),
                              }, status=status.HTTP_200_OK)
         elif chart_type == 'due_date':
-            start_date = request.query_params.get('start_date')
-            end_date = request.query_params.get('end_date')
-            if not start_date or not end_date:
-                return Response({'error': 'start_date and end_date are required'}, status=status.HTTP_400_BAD_REQUEST)
-
-            start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
-
             done_tasks = (
                 Task.objects.filter(
                     student=student,
@@ -119,13 +140,6 @@ class ChartViewSet(viewsets.ModelViewSet):
             all_result = {str(entry['date']): entry['count'] for entry in all_tasks}
             return Response({'done': done_result, 'all': all_result}, status=status.HTTP_200_OK)
         elif chart_type == 'lesson':
-            start_date = request.query_params.get('start_date')
-            end_date = request.query_params.get('end_date')
-            if not start_date or not end_date:
-                return Response({'error': 'start_date and end_date are required'}, status=status.HTTP_400_BAD_REQUEST)
-
-            start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
 
             lesson_tasks = self.get_queryset().filter(student=student,
                                                       lesson__isnull=False,
@@ -151,14 +165,6 @@ class ChartViewSet(viewsets.ModelViewSet):
             return Response({'done': done_result, 'all': all_result}, status=status.HTTP_200_OK)
 
         elif chart_type == 'category':
-            start_date = request.query_params.get('start_date')
-            end_date = request.query_params.get('end_date')
-            if not start_date or not end_date:
-                return Response({'error': 'start_date and end_date are required'}, status=status.HTTP_400_BAD_REQUEST)
-
-            start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
-
             lesson_tasks = self.get_queryset().filter(student=student,
                                                       category__isnull=False,
                                                       due_date__range=(start_date, end_date))
@@ -183,7 +189,8 @@ class ChartViewSet(viewsets.ModelViewSet):
             return Response({'done': done_result, 'all': all_result}, status=status.HTTP_200_OK)
 
         elif chart_type == 'weekday':
-            all_tasks = self.get_queryset().filter(student=student)
+            all_tasks = self.get_queryset().filter(student=student,
+                                                   due_date__range=(start_date, end_date))
 
             done_tasks_by_weekday = (
                 all_tasks.annotate(

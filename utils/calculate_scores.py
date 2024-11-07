@@ -4,9 +4,9 @@ import threading
 from django.db.models import Sum
 
 from Game.models import BattlePass, DailyChallenge, DailyChallengeParticipant, XPTracker, BattlePassParticipant, Tier, \
-    WeeklyChallengeParticipant, WeeklyChallenge
+    WeeklyChallengeParticipant, WeeklyChallenge, AvatarOwnerShip
 from Task.models import Task
-from Users.models import Student
+from Users.models import Student, Wallet
 from utils.date_functions import get_start_of_week
 
 
@@ -20,6 +20,17 @@ def calculate_level(participant):
         # print('New level:', new_level)
         participant.level = new_level
         participant.save()
+
+        reward = tiers.first().reward
+        if reward.type == 'coin':
+            wallet = Wallet.objects.get(user=participant.user)
+            wallet.coin = wallet.coin + reward.coin
+            wallet.save()
+        else:
+            avatar = reward.avatar
+            ownership = AvatarOwnerShip(user=participant.user,
+                                        avatar=avatar)
+            ownership.save()
 
 
 def add_daily_xp(user, daily, date):

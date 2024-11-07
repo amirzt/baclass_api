@@ -36,6 +36,8 @@ class BattlePass(models.Model):
     title = models.CharField(max_length=1000)
     description = models.TextField(max_length=1000)
     is_active = models.BooleanField(default=True)
+    background = models.ImageField(upload_to='BattlePass/', default=None, null=True)
+    logo = models.ImageField(upload_to='BattlePass/', default=None, null=True)
 
     start_date = models.DateField()
     end_date = models.DateField()
@@ -127,6 +129,14 @@ class XPTracker(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     battle_pass = models.ForeignKey(BattlePass, on_delete=models.CASCADE)
     xp = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class AvatarOwnerShip(models.Model):
+    avatar = models.ForeignKey(Avatar, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
