@@ -50,7 +50,14 @@ class UserViewSet(viewsets.ViewSet):
             return Response({'error': 'action is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         if method == 'login':
-            user, created = CustomUser.objects.get_or_create(phone=request.data['phone'])
+            try:
+                user = CustomUser.objects.get(phone=request.data['phone'])
+            except CustomUser.DoesNotExist:
+                serializer = RegisterSerializer(data=request.data)
+                if serializer.is_valid():
+                    user = serializer.save()
+                else:
+                    return Response(serializer.errors)
             send_otp(user)
             return Response({'message': 'otp sent'}, status=status.HTTP_200_OK)
 

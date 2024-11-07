@@ -7,7 +7,7 @@ from fcm_django.models import FCMDevice
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['phone', 'is_student', 'version']
+        fields = ['phone', 'is_student', 'version', 'fcm_token', 'device_type']
 
     def save(self, **kwargs):
         user = CustomUser(phone=self.validated_data['phone'],
