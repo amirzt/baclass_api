@@ -19,18 +19,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         wallet = Wallet(user=user)
         wallet.save()
 
-        # fcm device registration
-        fcm_token = self.validated_data['fcm_token']
-        device_type = self.validated_data['device_type']
-        device, created = FCMDevice.objects.get_or_create(
-            registration_id=fcm_token,
-            user=user,
-            defaults={'type': device_type}
-        )
-
-        if not created:
-            device.type = device_type
-            device.save()
+        # # fcm device registration
+        # fcm_token = self.validated_data['fcm_token']
+        # device_type = self.validated_data['device_type']
+        # device, created = FCMDevice.objects.get_or_create(
+        #     registration_id=fcm_token,
+        #     user=user,
+        #     defaults={'type': device_type}
+        # )
+        #
+        # if not created:
+        #     device.type = device_type
+        #     device.save()
 
         if user.is_student:
             student = Student(user=user,
