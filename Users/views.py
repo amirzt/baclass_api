@@ -58,7 +58,7 @@ class UserViewSet(viewsets.ViewSet):
                     user = serializer.save()
                 else:
                     return Response(serializer.errors)
-            send_otp(user)
+            # send_otp(user)
             return Response({'message': 'otp sent'}, status=status.HTTP_200_OK)
 
         elif method == 'check_otp':
