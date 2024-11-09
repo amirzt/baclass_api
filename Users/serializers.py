@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from Users.models import CustomUser, Wallet, Student, Grade, Banner, HomeMessage, Version, InAppMessage
-from fcm_django.models import FCMDevice
 
 
 class RegisterSerializer(serializers.ModelSerializer):

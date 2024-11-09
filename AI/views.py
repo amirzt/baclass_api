@@ -41,10 +41,10 @@ class ChatViewSet(viewsets.ModelViewSet):
         message_serializer.is_valid(raise_exception=True)
         message_serializer.save(chat=chat)
 
-        message = ask_question(chat)
+        bot_message = ask_question(chat)
 
         return Response(data={"chat_id": chat.id,
-                              "answer": message})
+                              "message": MessageSerializer(bot_message).data})
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
